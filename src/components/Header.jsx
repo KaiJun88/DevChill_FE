@@ -37,9 +37,13 @@ export default function Header() {
     const fetchData = async () => {
       try {
         const [catRes, countryRes, yearRes] = await Promise.all([
-          axios.get("http://localhost:8080/api/movies/category"),
-          axios.get("http://localhost:8080/api/movies/country"),
-          axios.get("http://localhost:8080/api/movies/year"),
+          axios.get(
+            "https://dev-chill-be-deploy.vercel.app/api/movies/category",
+          ),
+          axios.get(
+            "https://dev-chill-be-deploy.vercel.app/api/movies/country",
+          ),
+          axios.get("https://dev-chill-be-deploy.vercel.app/api/movies/year"),
         ]);
 
         setCategories(catRes.data?.data?.data || []);

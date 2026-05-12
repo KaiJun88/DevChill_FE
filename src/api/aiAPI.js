@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "http://localhost:8080/api/ai";
+const API_URL = "https://dev-chill-be-deploy.vercel.app/api/ai";
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("accessToken");

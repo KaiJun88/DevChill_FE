@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8080/api",
+  baseURL: "https://dev-chill-be-deploy.vercel.app/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -27,7 +27,7 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true; 
+      originalRequest._retry = true;
 
       try {
         const refreshToken = localStorage.getItem("refreshToken");
@@ -36,7 +36,7 @@ api.interceptors.response.use(
           throw new Error("Không có refresh token");
         }
         const res = await axios.post(
-          "http://localhost:8080/api/auth/refresh-token",
+          "https://dev-chill-be-deploy.vercel.app/api/auth/refresh-token",
           {
             refreshToken: refreshToken,
           },
