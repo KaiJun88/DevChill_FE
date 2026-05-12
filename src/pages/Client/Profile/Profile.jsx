@@ -118,7 +118,11 @@ export default function Profile() {
               className="relative w-32 h-32 lg:w-40 lg:h-40 rounded-full ring-4 ring-slate-50 overflow-hidden cursor-pointer bg-slate-100 group shadow-md"
             >
               <img
-                src={avatarPreview || user?.avatar_url || "/default-avatar.png"}
+                src={
+                  avatarPreview ||
+                  user?.avatar_url ||
+                  "../assets/devchill-logo.png"
+                }
                 alt="Avatar"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />

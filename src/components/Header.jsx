@@ -342,8 +342,10 @@ export default function Header() {
                     className="flex items-center gap-2 bg-white/60 border border-blue-100 px-3 py-1.5 rounded-full hover:bg-white shadow-sm transition-all"
                   >
                     <img
-                      src={user?.avatar_url || "/default-avatar.png"}
-                      onError={(e) => (e.target.src = "/default-avatar.png")}
+                      src={user?.avatar_url || "../assets/devchill-logo.png"}
+                      onError={(e) =>
+                        (e.target.src = "../assets/devchill-logo.png")
+                      }
                       className="w-8 h-8 rounded-full object-cover border border-gray-200"
                       alt="avatar"
                     />

@@ -143,7 +143,9 @@ export default function AdminProfile() {
                 >
                   <img
                     src={
-                      avatarPreview || user?.avatar_url || "/default-avatar.png"
+                      avatarPreview ||
+                      user?.avatar_url ||
+                      "../assets/devchill-logo.png"
                     }
                     alt="Admin Avatar"
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
