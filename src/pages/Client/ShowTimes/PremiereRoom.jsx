@@ -98,7 +98,7 @@ export default function PremiereRoom() {
   useEffect(() => {
     if (loading || pageError || isPremiumLocked) return;
 
-    const socketUrl = import.meta.env.VITE_API_URL;
+    const socketUrl = "https://devchillbe-production.up.railway.app";
     const socket = io(socketUrl, {
       transports: ["websocket"],
       upgrade: false,
