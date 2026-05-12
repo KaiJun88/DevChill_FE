@@ -13,7 +13,7 @@ import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
 
 const BACKEND_SOCKET_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8080";
+  import.meta.env.VITE_API_URL || "https://dev-chill-be-deploy.vercel.app";
 
 const INITIAL_OPTIONS = [
   "Gợi ý phim hay",
