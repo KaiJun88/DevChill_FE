@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { getAccessToken, getMe } from "../../../utils/auth";
-import { getProfile } from "../../../api/userAPI";
+import { getProfile } from "../../../api/userApi";
 import ChatHeader from "./ChatHeader";
 import TypingIndicator from "./TypingIndicator";
 import FloatingButton from "./FloatingButton";
@@ -64,7 +64,7 @@ export default function DevChillBot() {
   const [isTyping, setIsTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
-  const socketRef = useRef(null); 
+  const socketRef = useRef(null);
   const navigate = useNavigate();
 
   const customNavigate = (to, options) => {
