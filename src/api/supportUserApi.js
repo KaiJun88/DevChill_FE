@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://dev-chill-be-deploy.vercel.app/api/support";
+const API_URL = "https://devchillbe-production.up.railway.app/api/support";
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("accessToken");

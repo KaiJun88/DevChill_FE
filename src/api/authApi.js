@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "https://dev-chill-be-deploy.vercel.app/api/auth";
+const API_URL = "https://devchillbe-production.up.railway.app/api/auth";
 
 export const registerApi = async ({
   username,

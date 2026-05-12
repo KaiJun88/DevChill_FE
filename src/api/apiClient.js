@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://dev-chill-be-deploy.vercel.app/api",
+  baseURL: "https://devchillbe-production.up.railway.app/api",
   headers: {
     "Content-Type": "application/json",
   },
@@ -36,7 +36,7 @@ api.interceptors.response.use(
           throw new Error("Không có refresh token");
         }
         const res = await axios.post(
-          "https://dev-chill-be-deploy.vercel.app/api/auth/refresh-token",
+          "https://devchillbe-production.up.railway.app/api/auth/refresh-token",
           {
             refreshToken: refreshToken,
           },

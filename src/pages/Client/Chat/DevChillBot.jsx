@@ -12,7 +12,7 @@ import FloatingButton from "./FloatingButton";
 import ChatInput from "./ChatInput";
 import ChatMessage from "./ChatMessage";
 
-const BACKEND_SOCKET_URL = "https://dev-chill-be-deploy.vercel.app";
+const BACKEND_SOCKET_URL = "https://devchillbe-production.up.railway.app";
 
 const INITIAL_OPTIONS = [
   "Gợi ý phim hay",

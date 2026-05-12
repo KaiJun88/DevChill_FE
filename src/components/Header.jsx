@@ -38,12 +38,14 @@ export default function Header() {
       try {
         const [catRes, countryRes, yearRes] = await Promise.all([
           axios.get(
-            "https://dev-chill-be-deploy.vercel.app/api/movies/category",
+            "https://devchillbe-production.up.railway.app/api/movies/category",
           ),
           axios.get(
-            "https://dev-chill-be-deploy.vercel.app/api/movies/country",
+            "https://devchillbe-production.up.railway.app/api/movies/country",
           ),
-          axios.get("https://dev-chill-be-deploy.vercel.app/api/movies/year"),
+          axios.get(
+            "https://devchillbe-production.up.railway.app/api/movies/year",
+          ),
         ]);
 
         setCategories(catRes.data?.data?.data || []);
