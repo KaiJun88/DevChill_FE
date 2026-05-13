@@ -3,7 +3,8 @@ import { Play } from "lucide-react";
 
 export default function Top10WeeklySection({ movies }) {
   if (!movies || movies.length === 0) return null;
-  const doubledMovies = [...movies, ...movies];
+  const isScrollable = movies.length > 4;
+  const displayMovies = isScrollable ? [...movies, ...movies] : movies;
 
   const titleText = "Top 10 Trong Tuần";
   const letters = titleText.split("");
@@ -91,8 +92,10 @@ export default function Top10WeeklySection({ movies }) {
       </div>
 
       <div className="relative flex overflow-hidden w-full group">
-        <div className="my-marquee-track flex gap-10 md:gap-14 pl-4 md:pl-10 pb-12 pt-8 items-end">
-          {doubledMovies.map((movie, idx) => (
+        <div
+          className={`flex gap-10 md:gap-14 pl-4 md:pl-10 pb-12 pt-8 items-end ${isScrollable ? "my-marquee-track" : "overflow-x-auto scrollbar-hide w-full"}`}
+        >
+          {displayMovies.map((movie, idx) => (
             <Link
               to={`/movies/${movie.slug}`}
               key={`${movie.id}-${idx}`}
