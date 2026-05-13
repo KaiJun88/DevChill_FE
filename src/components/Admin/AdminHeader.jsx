@@ -29,6 +29,7 @@ export default function AdminHeader({ toggleSidebar, user }) {
   const [isModalOpen, setModalOpen] = useState(false);
 
   const navigate = useNavigate();
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
@@ -41,6 +42,7 @@ export default function AdminHeader({ toggleSidebar, user }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
   const fetchNotifications = async () => {
     try {
       const unreadRes = await getUnreadSupportCountAdmin();
@@ -49,7 +51,8 @@ export default function AdminHeader({ toggleSidebar, user }) {
       );
       const notifRes = await getAllSupportTicketsAdmin({
         limit: 10,
-        sort_by: "created_at-desc",
+        sort_by: "updated_at",
+        order: "desc",
       });
       const data =
         notifRes?.data?.tickets || notifRes?.tickets || notifRes?.data || [];
@@ -68,9 +71,9 @@ export default function AdminHeader({ toggleSidebar, user }) {
       const viewedTicketId = e.detail;
       setNotifications((prevNotifs) =>
         prevNotifs.map((notif) => {
-          if (notif.id === viewedTicketId && notif.status === "open") {
+          if (notif.id === viewedTicketId && notif.needs_attention) {
             setUnreadCount((prevCount) => Math.max(0, prevCount - 1));
-            return { ...notif, status: "read" };
+            return { ...notif, needs_attention: false };
           }
           return notif;
         }),
@@ -89,17 +92,20 @@ export default function AdminHeader({ toggleSidebar, user }) {
     toast.info("Đã Đăng Xuất");
     navigate("/login");
   };
+
   const handleToggleNotif = () => {
     setIsNotifOpen(!isNotifOpen);
     if (!isNotifOpen && unreadCount > 0) {
       setUnreadCount(0);
     }
   };
+
   const handleClickNotification = (ticketId) => {
     setSelectedTicketId(ticketId);
     setModalOpen(true);
     setIsNotifOpen(false);
   };
+
   const timeAgo = (dateStr) => {
     if (!dateStr) return "";
     const seconds = Math.floor((new Date() - new Date(dateStr)) / 1000);
@@ -170,16 +176,16 @@ export default function AdminHeader({ toggleSidebar, user }) {
                         key={notif.id}
                         onClick={() => handleClickNotification(notif.id)}
                         className={`relative flex gap-3 px-5 py-4 cursor-pointer border-b border-gray-50 transition-all ${
-                          notif.status === "open"
+                          notif.needs_attention
                             ? "bg-blue-50/50 hover:bg-blue-100/60"
                             : "bg-white hover:bg-slate-50"
                         }`}
                       >
-                        {notif.status === "open" && (
+                        {notif.needs_attention && (
                           <div className="absolute top-1/2 -translate-y-1/2 left-2 w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_5px_rgba(59,130,246,0.6)]"></div>
                         )}
                         <div
-                          className={`shrink-0 mt-1 ${notif.status === "open" ? "ml-2" : ""}`}
+                          className={`shrink-0 mt-1 ${notif.needs_attention ? "ml-2" : ""}`}
                         >
                           <img
                             src={notif.avatar_url}
@@ -190,9 +196,9 @@ export default function AdminHeader({ toggleSidebar, user }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-start mb-1">
                             <h4
-                              className={`text-[13px] truncate pr-2 ${notif.status === "open" ? "font-extrabold text-blue-900" : "font-bold text-gray-800"}`}
+                              className={`text-[13px] truncate pr-2 ${notif.needs_attention ? "font-extrabold text-blue-900" : "font-bold text-gray-800"}`}
                             >
-                              {notif.user_name || "Khách Vang Lai"}
+                              {notif.user_name || "Khách Vãng Lai"}
                             </h4>
                             <span className="shrink-0 text-[11px] font-semibold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                               #{notif.ticket_code}
@@ -200,7 +206,7 @@ export default function AdminHeader({ toggleSidebar, user }) {
                           </div>
 
                           <p
-                            className={`text-[13px] line-clamp-2 leading-relaxed mb-2 ${notif.status === "open" ? "text-gray-800 font-medium" : "text-gray-500"}`}
+                            className={`text-[13px] line-clamp-2 leading-relaxed mb-2 ${notif.needs_attention ? "text-gray-800 font-medium" : "text-gray-500"}`}
                           >
                             Yêu cầu hỗ trợ <b>{notif.category}</b>:{" "}
                             {notif.description}
@@ -209,7 +215,7 @@ export default function AdminHeader({ toggleSidebar, user }) {
                           <div className="flex justify-between items-center mt-1">
                             <span className="flex items-center gap-1 text-[11px] font-medium text-gray-400">
                               <Clock size={12} />
-                              {timeAgo(notif.created_at)}
+                              {timeAgo(notif.updated_at || notif.created_at)}
                             </span>
 
                             {notif.priority === "high" &&

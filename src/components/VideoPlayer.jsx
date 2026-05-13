@@ -74,10 +74,11 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
     };
     video.addEventListener("timeupdate", handleTimeUpdate);
     return () => video.removeEventListener("timeupdate", handleTimeUpdate);
-  }, [isDragging]); 
+  }, [isDragging]);
 
+  // CẬP NHẬT: Xử lý kéo thả cho cả Chuột và Cảm ứng (Touch)
   useEffect(() => {
-    const handleMouseMove = (e) => {
+    const handleMove = (e) => {
       if (
         !isDragging ||
         !progressBarRef.current ||
@@ -85,21 +86,35 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
         duration === 0
       )
         return;
+
+      // Ngăn hành vi cuộn trang khi đang kéo thanh tua trên điện thoại
+      if (e.type === "touchmove") e.preventDefault();
+
       const rect = progressBarRef.current.getBoundingClientRect();
-      let pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const clientX = e.type.includes("touch")
+        ? e.touches[0].clientX
+        : e.clientX;
+      let pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
       let newTime = pos * duration;
+
       setCurrentTime(newTime);
       videoRef.current.currentTime = newTime;
     };
-    const handleMouseUp = () => setIsDragging(false);
+    const handleEnd = () => setIsDragging(false);
 
     if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+      document.addEventListener("mousemove", handleMove);
+      document.addEventListener("mouseup", handleEnd);
+      // Hỗ trợ cảm ứng
+      document.addEventListener("touchmove", handleMove, { passive: false });
+      document.addEventListener("touchend", handleEnd);
     }
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleEnd);
+      // Hỗ trợ cảm ứng
+      document.removeEventListener("touchmove", handleMove);
+      document.removeEventListener("touchend", handleEnd);
     };
   }, [isDragging, duration]);
 
@@ -119,12 +134,16 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
     setCurrentTime(newTime);
   };
 
-  const handleProgressBarMouseDown = (e) => {
+  // CẬP NHẬT: Gộp sự kiện Mouse và Touch khi bắt đầu tua phim
+  const handleProgressStart = (e) => {
     setIsDragging(true);
     if (!progressBarRef.current || !videoRef.current || duration === 0) return;
+
     const rect = progressBarRef.current.getBoundingClientRect();
-    let pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const clientX = e.type.includes("touch") ? e.touches[0].clientX : e.clientX;
+    let pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
     let newTime = pos * duration;
+
     setCurrentTime(newTime);
     videoRef.current.currentTime = newTime;
   };
@@ -134,9 +153,28 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
     setIsMuted(!isMuted);
   };
 
+  // CẬP NHẬT: Hỗ trợ Fullscreen cho iPhone / iPad (iOS Safari)
   const handleFullscreen = () => {
-    if (!document.fullscreenElement) wrapperRef.current.requestFullscreen();
-    else document.exitFullscreen();
+    const wrapper = wrapperRef.current;
+    const video = videoRef.current;
+
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      if (wrapper.requestFullscreen) {
+        wrapper.requestFullscreen().catch((err) => console.log(err));
+      } else if (wrapper.webkitRequestFullscreen) {
+        /* Safari cho Mac/iPad */
+        wrapper.webkitRequestFullscreen();
+      } else if (video.webkitEnterFullscreen) {
+        /* Bắt buộc dành riêng cho iPhone (iOS) */
+        video.webkitEnterFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    }
   };
 
   const handleSpeedChange = (speed) => {
@@ -145,6 +183,7 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
     setShowSpeedMenu(false);
   };
 
+  // CẬP NHẬT: Thêm touchstart để trên di động ấn vào màn hình là Control Bar hiện lên
   useEffect(() => {
     let timeout;
     const resetTimer = () => {
@@ -154,8 +193,16 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
         if (isPlaying && !isDragging && !showSpeedMenu) setShowControls(false);
       }, 3000);
     };
-    wrapperRef.current.addEventListener("mousemove", resetTimer);
-    return () => clearTimeout(timeout);
+    const wrapper = wrapperRef.current;
+
+    wrapper.addEventListener("mousemove", resetTimer);
+    wrapper.addEventListener("touchstart", resetTimer); // Thêm dòng này cho Mobile
+
+    return () => {
+      clearTimeout(timeout);
+      wrapper.removeEventListener("mousemove", resetTimer);
+      wrapper.removeEventListener("touchstart", resetTimer);
+    };
   }, [isPlaying, isDragging, showSpeedMenu]);
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -179,28 +226,35 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
       />
 
       <div
-        className={`absolute bottom-0 left-0 right-0 px-5 pb-5 pt-20 bg-linear-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-300 ${showControls || !isPlaying ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        className={`absolute bottom-0 left-0 right-0 px-3 sm:px-5 pb-3 sm:pb-5 pt-20 bg-linear-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-300 ${
+          showControls || !isPlaying
+            ? "opacity-100"
+            : "opacity-0 pointer-events-none"
+        }`}
       >
         <div
           ref={progressBarRef}
-          onMouseDown={handleProgressBarMouseDown}
-          className="w-full h-1.5 bg-white/30 rounded-full mb-4 relative cursor-pointer group/bar"
+          onMouseDown={handleProgressStart}
+          onTouchStart={handleProgressStart} /* Thêm sự kiện chạm */
+          className="w-full h-1.5 sm:h-2 bg-white/30 rounded-full mb-4 relative cursor-pointer group/bar"
         >
           <div
             className="absolute top-0 left-0 h-full bg-blue-500 rounded-full"
             style={{ width: `${progressPercent}%` }}
           >
             <div
-              className={`absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-500 rounded-full scale-0 group-hover/bar:scale-100 ${isDragging ? "scale-100" : ""} transition-transform shadow-md`}
+              className={`absolute right-0 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 bg-blue-500 rounded-full scale-0 group-hover/bar:scale-100 ${
+                isDragging ? "scale-100" : ""
+              } transition-transform shadow-md`}
             ></div>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-white relative">
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5">
             <button
               onClick={togglePlay}
-              className="hover:text-blue-500 transition-colors"
+              className="hover:text-blue-500 transition-colors p-1"
             >
               {isPlaying ? (
                 <Pause fill="currentColor" size={24} />
@@ -210,28 +264,28 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
             </button>
             <button
               onClick={() => skip(-10)}
-              className="hover:text-blue-500 transition-colors"
+              className="hover:text-blue-500 transition-colors hidden sm:block p-1"
             >
               <RotateCcw size={20} />
             </button>
             <button
               onClick={() => skip(10)}
-              className="hover:text-blue-500 transition-colors"
+              className="hover:text-blue-500 transition-colors hidden sm:block p-1"
             >
               <RotateCw size={20} />
             </button>
             <button
               onClick={toggleMute}
-              className="hover:text-blue-500 transition-colors ml-2"
+              className="hover:text-blue-500 transition-colors sm:ml-2 p-1"
             >
               {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
             </button>
-            <span className="text-[13px] font-medium ml-2 text-white/90 tabular-nums">
+            <span className="text-[12px] sm:text-[13px] font-medium ml-1 sm:ml-2 text-white/90 tabular-nums">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
           </div>
 
-          <div className="flex items-center gap-4 relative">
+          <div className="flex items-center gap-2 sm:gap-4 relative">
             <div className="relative">
               <button
                 onClick={() => setShowSpeedMenu(!showSpeedMenu)}
@@ -239,7 +293,9 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
               >
                 <Settings
                   size={20}
-                  className={`${showSpeedMenu ? "rotate-90 text-blue-500" : ""} transition-transform duration-300`}
+                  className={`${
+                    showSpeedMenu ? "rotate-90 text-blue-500" : ""
+                  } transition-transform duration-300`}
                 />
               </button>
               {showSpeedMenu && (
@@ -251,7 +307,9 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
                     <button
                       key={speed}
                       onClick={() => handleSpeedChange(speed)}
-                      className={`w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-white/10 transition-colors flex justify-between items-center ${playbackRate === speed ? "text-blue-400" : "text-white"}`}
+                      className={`w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-white/10 transition-colors flex justify-between items-center ${
+                        playbackRate === speed ? "text-blue-400" : "text-white"
+                      }`}
                     >
                       {speed === 1 ? "Chuẩn" : `${speed}x`}
                       {playbackRate === speed && (
@@ -263,14 +321,14 @@ export default function VideoPlayer({ url, startTime = 0, onTimeUpdate }) {
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded border border-white/20">
+            <div className="hidden sm:flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded border border-white/20">
               <span className="text-[10px] font-bold text-white/80 uppercase tracking-wider">
                 HD
               </span>
             </div>
             <button
               onClick={handleFullscreen}
-              className="hover:text-blue-500 transition-colors"
+              className="hover:text-blue-500 transition-colors p-1"
             >
               <Maximize size={20} />
             </button>

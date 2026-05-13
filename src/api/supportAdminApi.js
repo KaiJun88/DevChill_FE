@@ -18,3 +18,7 @@ export const replySupportTicketAdmin = async (id, data) => {
   const res = await api.post(`/admin/support/${id}/reply`, data);
   return res.data;
 };
+export const updateTicketStatusAdmin = async (id, data) => {
+  const res = await api.patch(`/admin/support/${id}/status`, data);
+  return res.data;
+};
