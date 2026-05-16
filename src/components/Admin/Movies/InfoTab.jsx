@@ -13,6 +13,7 @@ export default function InfoTab({ edit, onChange, contracts, errors }) {
     cursor-pointer
     ${hasError ? "border-red-400" : "border-slate-200"}
   `;
+
   return (
     <div className="space-y-8 animate-fade-in text-slate-800">
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden transition-all hover:shadow-md">
@@ -53,7 +54,7 @@ export default function InfoTab({ edit, onChange, contracts, errors }) {
                 <select
                   value={edit.year || ""}
                   onChange={(e) => onChange("year", e.target.value)}
-                  className={selectStyle(false)}
+                  className={selectStyle(errors.year)}
                 >
                   <option value="" disabled className="text-slate-400">
                     --- Chọn năm ---
@@ -69,6 +70,11 @@ export default function InfoTab({ edit, onChange, contracts, errors }) {
                   size={10}
                 />
               </div>
+              {errors.year && (
+                <p className="text-[11px] text-red-500 mt-1 ml-1 font-medium animate-pulse">
+                  * {errors.year}
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">
@@ -97,17 +103,20 @@ export default function InfoTab({ edit, onChange, contracts, errors }) {
               </div>
             </div>
             <Input
-              label="Thời lượng"
+              label="Thời lượng (Phút)"
               value={edit.duration || ""}
               onChange={(v) => onChange("duration", v)}
-              placeholder="VD: 120 phút"
+              error={errors.duration}
+              placeholder="VD: 120"
             />
             <Input
               label="Tổng số tập"
               value={edit.episode_total || ""}
               onChange={(v) => onChange("episode_total", v)}
-              placeholder="VD: 1 / 12"
+              error={errors.episode_total}
+              placeholder="VD: 12"
             />
+
             <div className="flex flex-col gap-1.5 md:col-span-2 lg:col-span-1">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">
                 Hợp đồng bản quyền

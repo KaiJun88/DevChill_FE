@@ -1,8 +1,9 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, useRef } from "react";
-import { FaTimes, FaSave } from "react-icons/fa";
+import { FaTimes, FaSave, FaFileExcel, FaUpload } from "react-icons/fa";
 import { toast } from "react-toastify";
+import * as XLSX from "xlsx";
 
 import {
   getMovieById,
@@ -40,6 +41,7 @@ export default function MoviesModal({
   const [errors, setErrors] = useState({});
 
   const streamLocks = useRef({});
+  const allInOneFileInputRef = useRef(null);
 
   useEffect(() => {
     fetchContracts();
@@ -124,14 +126,27 @@ export default function MoviesModal({
           season,
           episode_number,
           name: ep.name,
-          is_published: ep.is_published, // Bắn trường cờ này xuống cho DB
+          is_published: ep.is_published,
           streams,
         };
       })
       .filter(Boolean);
 
   const handleChange = (field, value) => {
+    if (["duration", "episode_total"].includes(field)) {
+      if (value !== "" && !/^\d*$/.test(value)) {
+        toast.warning("Trường này chỉ được phép nhập SỐ!");
+        return; 
+      }
+    }
     setEdit((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErr = { ...prev };
+        delete newErr[field];
+        return newErr;
+      });
+    }
   };
 
   const handleFileChange = (field, file) => {
@@ -152,7 +167,7 @@ export default function MoviesModal({
           season: 1,
           episode_number: 1,
           name: "",
-          is_published: false, // Mặc định tập mới thêm vào sẽ là ẨN
+          is_published: false,
           streams: [],
         },
       ],
@@ -213,7 +228,227 @@ export default function MoviesModal({
       ...prev,
       episodes: [...(prev.episodes || []), ...importedEpisodes],
     }));
-    toast.success(`Đã nhập thành công ${importedEpisodes.length} tập phim`);
+    toast.success(`Đã nối thêm ${importedEpisodes.length} tập phim mới!`);
+  };
+
+  const handleImportAllInOne = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (
+      !file.type.includes("sheet") &&
+      !file.type.includes("excel") &&
+      !file.name.endsWith(".xlsx") &&
+      !file.name.endsWith(".xls") &&
+      !file.name.endsWith(".csv")
+    ) {
+      toast.error("Vui lòng chọn file Excel hoặc CSV");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+
+        let updatedEdit = { ...edit };
+        let newEpisodes = [];
+        let hasNumberWarning = false;
+
+        const normalizeRow = (r) => {
+          const res = {};
+          Object.keys(r).forEach((k) => {
+            res[k.trim().toLowerCase()] = r[k];
+          });
+          return res;
+        };
+
+        const parseNumber = (val, fieldName, fallbackValue) => {
+          if (val === undefined || val === null || val === "")
+            return fallbackValue;
+          const num = Number(val);
+          if (isNaN(num)) {
+            hasNumberWarning = true;
+            return fallbackValue;
+          }
+          return num;
+        };
+
+        const parseBoolean = (val, fallbackValue) => {
+          if (val === undefined || val === null) return fallbackValue;
+          const str = String(val).toLowerCase().trim();
+          return str === "true" || str === "1" || str === "yes" || str === "có";
+        };
+
+        const parseArray = (val, fallbackValue) => {
+          if (!val) return fallbackValue;
+          return String(val)
+            .split(",")
+            .map((s) => ({ name: s.trim() }))
+            .filter((c) => c.name);
+        };
+
+        const parsePeople = (val, fallbackValue) => {
+          if (!val) return fallbackValue;
+          return String(val)
+            .split(",")
+            .map((s) => ({ name: s.trim(), role: "actor" }))
+            .filter((p) => p.name);
+        };
+
+        workbook.SheetNames.forEach((sheetName, index) => {
+          const sheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+          if (jsonData.length === 0) return;
+
+          const isEpisodeSheet =
+            index === 3 ||
+            sheetName.toLowerCase().includes("tap") ||
+            sheetName.toLowerCase().includes("ep");
+
+          if (isEpisodeSheet) {
+            const episodeMap = {};
+            jsonData.forEach((rawRow) => {
+              const row = normalizeRow(rawRow);
+              const season = row["season"] || row["phần"] || 1;
+              const epNum = row["episode"] || row["tập số"] || row["tập"];
+
+              if (epNum === undefined || epNum === "") return;
+
+              const key = `${season}_${epNum}`;
+
+              if (!episodeMap[key]) {
+                const rawPublish = row["publish"] || row["hiển thị"];
+                const isPub =
+                  rawPublish === "true" ||
+                  rawPublish === true ||
+                  rawPublish === 1;
+
+                episodeMap[key] = {
+                  season: Number(season) || 1,
+                  episode_number: Number(epNum),
+                  name: row["name"] || row["tên tập"] || "",
+                  is_published: isPub,
+                  streams: [],
+                };
+              }
+
+              const rawLang = row["language"] || row["ngôn ngữ"];
+              const parsedLang = rawLang
+                ? String(rawLang).toLowerCase()
+                : "vietsub";
+
+              const stream = {
+                server_name: row["server"] || row["máy chủ"] || "",
+                quality: row["quality"] || row["chất lượng"] || "1080p",
+                lang: parsedLang,
+                link_embed: row["embed url"] || row["embed"] || "",
+                link_m3u8: row["m3u8 url"] || row["m3u8"] || "",
+              };
+
+              if (stream.link_embed || stream.link_m3u8) {
+                episodeMap[key].streams.push(stream);
+              }
+            });
+
+            newEpisodes = [...newEpisodes, ...Object.values(episodeMap)];
+          } else {
+            const row = normalizeRow(jsonData[0]);
+
+            updatedEdit = {
+              ...updatedEdit,
+              name: row["name"] || row["tên phim"] || updatedEdit.name,
+              origin_name:
+                row["origin_name"] || row["tên gốc"] || updatedEdit.origin_name,
+              year: parseNumber(
+                row["year"] || row["năm sản xuất"],
+                "Năm sản xuất",
+                updatedEdit.year,
+              ),
+              type: row["type"] || row["định dạng"] || updatedEdit.type,
+              duration: parseNumber(
+                row["duration"] || row["thời lượng"],
+                "Thời lượng",
+                updatedEdit.duration,
+              ),
+              episode_total: parseNumber(
+                row["episode_total"] || row["tổng số tập"],
+                "Tổng số tập",
+                updatedEdit.episode_total,
+              ),
+              content: row["content"] || row["nội dung"] || updatedEdit.content,
+              contract_id: parseNumber(
+                row["contract_id"] || row["mã hợp đồng"],
+                "Mã hợp đồng",
+                updatedEdit.contract_id,
+              ),
+
+              categories: parseArray(
+                row["categories"] || row["thể loại"],
+                updatedEdit.categories,
+              ),
+              countries: parseArray(
+                row["countries"] || row["quốc gia"],
+                updatedEdit.countries,
+              ),
+              people: parsePeople(
+                row["people"] ||
+                  row["diễn viên"] ||
+                  row["nhân sự"] ||
+                  row["actor"],
+                updatedEdit.people,
+              ),
+              poster_url:
+                row["poster_url"] || row["poster"] || updatedEdit.poster_url,
+              thumb_url:
+                row["thumb_url"] || row["thumbnail"] || updatedEdit.thumb_url,
+              trailer_url:
+                row["trailer_url"] || row["trailer"] || updatedEdit.trailer_url,
+              status: row["status"] || row["trạng thái"] || updatedEdit.status,
+              lifecycle_status:
+                row["lifecycle_status"] ||
+                row["vòng đời"] ||
+                updatedEdit.lifecycle_status,
+              production_status:
+                row["production_status"] ||
+                row["sản xuất"] ||
+                updatedEdit.production_status,
+              source: row["source"] || row["nguồn"] || updatedEdit.source,
+              is_available: parseBoolean(
+                row["is_available"] || row["hiển thị"],
+                updatedEdit.is_available,
+              ),
+              is_premium: parseBoolean(
+                row["is_premium"] || row["premium"],
+                updatedEdit.is_premium,
+              ),
+            };
+          }
+        });
+
+        if (newEpisodes.length > 0) {
+          updatedEdit.episodes = [
+            ...(updatedEdit.episodes || []),
+            ...newEpisodes,
+          ];
+        }
+        setEdit(updatedEdit);
+
+        if (hasNumberWarning) {
+          toast.warning(
+            "Import All-in-One xong. Có một vài ô nhập sai kiểu số đã bị bỏ qua!",
+          );
+        } else {
+          toast.success("Import thông tin & Tập phim thành công!");
+        }
+      } catch (err) {
+        toast.error("Lỗi khi đọc file Excel Phim: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
   };
 
   const validateInfo = () => {
@@ -222,13 +457,24 @@ export default function MoviesModal({
     if (!edit.name?.trim()) err.name = "Tên Phim Là Bắt Buộc";
     if (!edit.contract_id) err.contract_id = "Chọn Hợp Đồng Là Bắt Buộc";
 
+    if (edit.episode_total && !/^\d+$/.test(String(edit.episode_total))) {
+      err.episode_total = "Chỉ được nhập số (VD: 12)";
+    }
+    if (edit.duration && !/^\d+$/.test(String(edit.duration))) {
+      err.duration = "Chỉ được nhập số (VD: 120)";
+    }
+
     setErrors(err);
     return Object.keys(err).length === 0;
   };
 
   const handleNext = () => {
     if (activeTab === TAB.INFO) {
-      if (!validateInfo()) return;
+      if (!validateInfo()) {
+        setActiveTab(TAB.INFO);
+        toast.error("Vui lòng kiểm tra lại thông tin bị lỗi!");
+        return;
+      }
       setActiveTab(TAB.META);
     } else if (activeTab === TAB.META) {
       setActiveTab(TAB.MEDIA);
@@ -241,9 +487,9 @@ export default function MoviesModal({
     try {
       if (!validateInfo()) {
         setActiveTab(TAB.INFO);
+        toast.error("Vui lòng kiểm tra lại thông tin bị lỗi!");
         return;
       }
-
       const cleanedEpisodes = cleanEpisodes(edit.episodes);
 
       if (mode === "create") {
@@ -328,15 +574,30 @@ export default function MoviesModal({
       toast.error("Lưu Thất Bại");
     }
   };
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="w-275 max-h-[90vh] bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-linear-to-r from-slate-50 to-white">
-          <h2 className="text-lg font-bold text-slate-700">
-            {mode === "create" ? "Create Movie" : "Movie Detail"}
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-bold text-slate-700">
+              {mode === "create" ? "Create Movie" : "Movie Detail"}
+            </h2>
 
+            <input
+              type="file"
+              ref={allInOneFileInputRef}
+              onChange={handleImportAllInOne}
+              accept=".xlsx, .xls, .csv"
+              className="hidden"
+            />
+            <button
+              onClick={() => allInOneFileInputRef.current?.click()}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-sm"
+              title="Import 1 file Excel chứa tối đa 4 Sheet (Thông Tin, Phân Loại, Media, Tập Phim)"
+            >
+              <FaUpload size={12} /> Import Tự Động
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
@@ -344,6 +605,7 @@ export default function MoviesModal({
             <FaTimes className="text-slate-500" />
           </button>
         </div>
+
         <div className="flex border-b border-slate-100 bg-slate-50/60">
           {Object.values(TAB).map((t) => (
             <button
@@ -391,6 +653,7 @@ export default function MoviesModal({
             <SettingTab edit={edit} onChange={handleChange} />
           )}
         </div>
+
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white">
           <button
             onClick={onClose}

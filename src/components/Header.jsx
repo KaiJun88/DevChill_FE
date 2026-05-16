@@ -343,9 +343,10 @@ export default function Header() {
                   >
                     <img
                       src={user?.avatar_url || "../assets/devchill-logo.png"}
-                      onError={(e) =>
-                        (e.target.src = "../assets/devchill-logo.png")
-                      }
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/default-avatar.png";
+                      }}
                       className="w-8 h-8 rounded-full object-cover border border-gray-200"
                       alt="avatar"
                     />
