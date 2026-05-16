@@ -23,7 +23,7 @@ export const registerSchema = z
     password: passwordRules,
     confirmPassword: z.string(),
     verify: z.boolean().refine((val) => val === true, {
-      message: "Bạn phải xác minh là con người",
+      message: "Bạn vui lòng đồng ý điều khoản",
     }),
   })
   .refine((data) => data.password === data.confirmPassword, {
