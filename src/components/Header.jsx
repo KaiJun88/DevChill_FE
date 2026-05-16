@@ -342,12 +342,16 @@ export default function Header() {
                     className="flex items-center gap-2 bg-white/60 border border-blue-100 px-3 py-1.5 rounded-full hover:bg-white shadow-sm transition-all"
                   >
                     <img
-                      src={user?.avatar_url || "../assets/devchill-logo.png"}
+                      src={
+                        user?.avatar_url ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || "User")}&background=random&color=fff&size=128`
+                      }
                       onError={(e) => {
                         e.target.onerror = null;
-                        e.target.src = "/default-avatar.png";
+                        e.target.src =
+                          "https://ui-avatars.com/api/?name=U&background=cbd5e1&color=fff";
                       }}
-                      className="w-8 h-8 rounded-full object-cover border border-gray-200"
+                      className="w-8 h-8 rounded-full object-cover border border-slate-200 bg-slate-200 shrink-0 transition-opacity duration-300"
                       alt="avatar"
                     />
                     <span className="font-semibold text-gray-800 whitespace-nowrap max-w-25 truncate">
