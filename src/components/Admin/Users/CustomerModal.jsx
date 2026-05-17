@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react";
 import { X, User, Pencil } from "lucide-react";
 import { getAllPlansAdmin } from "../../../api/planAdminApi";
@@ -5,10 +6,12 @@ import { getAllPlansAdmin } from "../../../api/planAdminApi";
 export default function CustomerModal({ isOpen, onClose, user, onSave }) {
   const [formData, setFormData] = useState({});
   const [isEditing, setIsEditing] = useState(false);
-  const [plans, setPlans] = useState([]); 
+  const [plans, setPlans] = useState([]);
+  const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
+
   useEffect(() => {
     if (user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         ...user,
         password: "",
@@ -16,14 +19,16 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
       });
     }
     setIsEditing(false);
+    setError("");
+    setEmailError("");
   }, [user, isOpen]);
+
   useEffect(() => {
     const fetchPlans = async () => {
       try {
         const res = await getAllPlansAdmin({ status: "active" });
         let data = res?.data || res || [];
         data = data.filter((plan) => plan.status === "active");
-
         setPlans(data);
       } catch (error) {
         console.error("Lỗi khi tải danh sách gói:", error);
@@ -37,10 +42,30 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setError("");
+    setEmailError("");
+
     const data = { ...formData };
-    if (!data.password) delete data.password;
-    onSave && onSave(data);
+    if (!data.password || data.password.trim() === "") {
+      delete data.password;
+    }
+
+    try {
+      if (onSave) {
+        await onSave(data);
+      }
+    } catch (err) {
+      const errorMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Cập nhật thất bại. Vui lòng thử lại.";
+      if (errorMsg.toLowerCase().includes("email")) {
+        setEmailError(errorMsg);
+      } else {
+        setError(errorMsg);
+      }
+    }
   };
 
   const formatDate = (d) => {
@@ -56,6 +81,8 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
     "bg-white border-slate-200 text-slate-700 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10";
   const disabledStyle =
     "bg-slate-50 border-transparent text-slate-500 cursor-not-allowed";
+  const errorInputStyle =
+    "bg-rose-50/50 border-rose-300 text-rose-700 focus:border-rose-400 focus:ring-4 focus:ring-rose-500/10";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -68,10 +95,13 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
           <h3 className="text-lg font-bold text-slate-800 tracking-tight">
             Hồ sơ khách hàng
           </h3>
-
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsEditing(!isEditing)}
+              onClick={() => {
+                setIsEditing(!isEditing);
+                setError("");
+                setEmailError("");
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all ${
                 isEditing
                   ? "bg-blue-50 text-blue-600"
@@ -148,13 +178,23 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
               <input
                 value={formData.email || ""}
                 disabled={!isEditing}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  if (emailError) setEmailError("");
+                }}
                 className={`${inputStyle} ${
-                  isEditing ? activeInputStyle : disabledStyle
+                  !isEditing
+                    ? disabledStyle
+                    : emailError
+                      ? errorInputStyle
+                      : activeInputStyle
                 }`}
               />
+              {emailError && (
+                <span className="text-rose-500 text-[12px] font-semibold mt-1.5 ml-1 block animate-in fade-in zoom-in-95 duration-200">
+                  {emailError}
+                </span>
+              )}
             </div>
 
             <div>
@@ -169,7 +209,7 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
                   setFormData({ ...formData, password: e.target.value })
                 }
                 placeholder={
-                  isEditing ? "Nhập mật khẩu mới..." : "Được bảo mật"
+                  isEditing ? "Bỏ trống nếu không muốn đổi..." : "Được bảo mật"
                 }
                 className={`${inputStyle} ${
                   isEditing ? activeInputStyle : disabledStyle
@@ -278,6 +318,13 @@ export default function CustomerModal({ isOpen, onClose, user, onSave }) {
             </div>
           </div>
         </div>
+        {error && (
+          <div className="px-8 pb-2">
+            <div className="w-full bg-rose-50 border border-rose-200 text-rose-600 text-[13px] font-semibold px-4 py-2.5 rounded-xl text-center">
+              {error}
+            </div>
+          </div>
+        )}
         <div className="flex justify-end gap-3 px-8 py-5 border-t border-slate-100 bg-white">
           <button
             onClick={onClose}

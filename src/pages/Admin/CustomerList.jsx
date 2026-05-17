@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
@@ -79,8 +80,6 @@ export default function CustomerList() {
 
       return matchSearch && matchStatus;
     });
-
-    // Thêm logic Sort theo option
     const [key, order] = sortOption.split("-");
     result.sort((a, b) => {
       let valA = a[key];
@@ -130,7 +129,7 @@ export default function CustomerList() {
       setCustomerModalOpen(false);
       setSelectedUser(null);
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Cập nhật thất bại");
+      throw err;
     }
   };
 
