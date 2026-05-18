@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, Unlock, X, Loader2 } from "lucide-react"; 
+import { Lock, Unlock, X, Loader2 } from "lucide-react";
 
 export default function LockModal({
   isOpen,
@@ -89,16 +89,6 @@ export default function LockModal({
 
           {!isLocked && (
             <div className="space-y-4 pt-1">
-              <label className="flex items-center gap-3 text-[14px] font-medium text-slate-600 cursor-pointer p-3 bg-slate-50/50 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={isPermanent}
-                  onChange={(e) => setIsPermanent(e.target.checked)}
-                  className="w-4 h-4 rounded text-rose-500 bg-white border-slate-300 focus:ring-rose-500/20 focus:ring-2 accent-rose-500 cursor-pointer"
-                />
-                Khóa vĩnh viễn
-              </label>
-
               {!isPermanent && (
                 <div className="animate-in slide-in-from-top-2 fade-in duration-200">
                   <label className={labelStyle}>Thời hạn khóa (Đến ngày)</label>
